@@ -1,6 +1,8 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 import {
+  AdaptationEvent,
+  AffectiveState,
   ChatMode,
   comfortRecordings,
   JournalEntry,
@@ -8,13 +10,21 @@ import {
   PressureLevel,
   StudyTopic,
   SleepTiming,
+  TestAnswer,
+  TestDifficulty,
+  TestQuestion,
+  TestSession,
+  TestTopic,
   chatStarters,
   journalEntriesSeed,
   moodHistorySeed,
   onboardingQuestions,
+  testQuestionBank,
 } from '@/constants/DummyData';
 import {
   CheckInPayload,
+  calculateTestResults,
+  getAdaptiveDifficulty,
   getAffectiveState,
   getNotificationMessage,
   getReadinessScore,
@@ -28,8 +38,10 @@ import {
   ApiError,
   CheckinResponse,
   analyze,
+  analyzeBrainDump,
   createCheckin,
   getCheckinHistory,
+  getAiChatReply,
   getMe,
   getStudyPlan as getBackendStudyPlan,
   login,
@@ -67,7 +79,7 @@ type MindTraceContextValue = {
   stressScore: number;
   stressStatus: string;
   velocity: 'recovering' | 'stable' | 'declining' | 'critical';
-  affectiveState: 'curiosity' | 'confusion' | 'frustration' | 'boredom';
+  affectiveState: AffectiveState;
   moodHistory: { day: string; score: number }[];
   studyPlan: StudyTopic[];
   notification: string;
@@ -107,6 +119,8 @@ type MindTraceContextValue = {
   onboardingCompleted: boolean;
   authUser: AuthUser | null;
   syncError: string | null;
+  testHistory: TestSession[];
+  activeTestSession: TestSession | null;
   updateDraft: (input: Partial<CheckInPayload>) => void;
   submitCheckIn: () => Promise<boolean>;
   setChatMode: (mode: ChatMode) => void;
@@ -128,6 +142,9 @@ type MindTraceContextValue = {
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (fullName: string, email: string, password: string) => Promise<boolean>;
   signOut: () => void;
+  startTest: (topic: TestTopic | 'mixed', difficulty: TestDifficulty, questionCount: number, adaptive: boolean) => void;
+  submitTestAnswer: (questionId: string, selectedIndex: number, timeTaken: number) => void;
+  finishTest: () => void;
 };
 
 const initialPayload: CheckInPayload = {
@@ -144,6 +161,15 @@ const createWelcomeMessages = (mode: ChatMode): ChatMessage[] =>
     role: 'bot',
     text,
   }));
+
+const localChatResponses: Record<ChatMode, string> = {
+  listener:
+    'That sounds like a lot to carry. Let us name the toughest part first, then we can lighten the plan.',
+  laugh:
+    'Emergency comedy intervention: your syllabus is not a villain origin story, even if it is trying its best.',
+  brainstorm:
+    'Here is a gentle next move: pick one concept, one worked example, and one short recall round.',
+};
 
 const moodToTags = (payload: CheckInPayload) => {
   const tags = new Set<string>();
@@ -192,13 +218,27 @@ const hoursToSleepTiming = (sleep: number): SleepTiming => {
   return 'uneven';
 };
 
-const serializeMoodPayload = (payload: CheckInPayload) =>
+const serializeMoodPayload = (
+  payload: CheckInPayload,
+  aiInsights?: {
+    summary: string;
+    stressSignals: string[];
+    affectiveState: string;
+    suggestedAction: string;
+    provider: 'gemini' | 'local';
+  },
+) =>
   JSON.stringify({
     emoji: payload.emoji,
     score: payload.moodScore,
     pressure: payload.examPressure,
     note: payload.brainDump.trim(),
     tags: moodToTags(payload),
+    aiSummary: aiInsights?.summary,
+    aiSignals: aiInsights?.stressSignals,
+    aiAffectiveState: aiInsights?.affectiveState,
+    aiSuggestedAction: aiInsights?.suggestedAction,
+    aiProvider: aiInsights?.provider,
   });
 
 const parseMoodPayload = (mood: string, sleep: number): CheckInPayload => {
@@ -364,6 +404,10 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
     stressTrigger: 'Deadlines and unfinished backlog',
     supportStyle: 'Gentle listening with clear next steps',
   });
+
+  // Test state
+  const [testHistory, setTestHistory] = useState<TestSession[]>([]);
+  const [activeTestSession, setActiveTestSession] = useState<TestSession | null>(null);
 
   const derived = useMemo(
     () =>
@@ -541,10 +585,19 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
     setIsSubmittingCheckIn(true);
     setSyncError(null);
 
-    const mood = serializeMoodPayload(draft);
     const sleep = sleepTimingToHours(draft.sleepTiming);
 
     try {
+      const brainDumpInsights =
+        draft.brainDump.trim().length > 0
+          ? await analyzeBrainDump(authToken, {
+              text: draft.brainDump,
+              mood: draft.emoji,
+              sleep,
+            }).catch(() => null)
+          : null;
+      const mood = serializeMoodPayload(draft, brainDumpInsights || undefined);
+
       await createCheckin(authToken, { mood, sleep });
 
       const [historyResponse, analysisResponse, studyPlanResponse] = await Promise.all([
@@ -579,18 +632,130 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
     if (!trimmed) {
       return;
     }
+    const userMessageId = `user-${Date.now()}`;
 
-    const responseBank: Record<ChatMode, string> = {
-      listener: 'That sounds like a lot to carry. Let us name the toughest part first, then we can lighten the plan.',
-      laugh: 'Emergency comedy intervention: your syllabus is not a villain origin story, even if it is trying its best.',
-      brainstorm: 'Here is a gentle next move: pick one concept, one worked example, and one short recall round.',
+    setChatMessages((current) => [...current, { id: userMessageId, role: 'user', text: trimmed }]);
+
+    const appendBotReply = (text: string) => {
+      setChatMessages((current) => [...current, { id: `bot-${Date.now()}`, role: 'bot', text }]);
     };
 
-    setChatMessages((current) => [
-      ...current,
-      { id: `user-${Date.now()}`, role: 'user', text: trimmed },
-      { id: `bot-${Date.now() + 1}`, role: 'bot', text: responseBank[chatMode] },
-    ]);
+    if (!authToken) {
+      appendBotReply(localChatResponses[chatMode]);
+      return;
+    }
+
+    void getAiChatReply(authToken, {
+      message: trimmed,
+      mode: chatMode,
+      affectiveState: derived.affectiveState,
+      stressScore: derived.stressScore,
+      name: studentProfile.name,
+    })
+      .then((response) => {
+        appendBotReply(response.reply || localChatResponses[chatMode]);
+      })
+      .catch(() => {
+        appendBotReply(localChatResponses[chatMode]);
+      });
+  };
+
+  // ── Test methods ────────────────────────────────────────────────────────
+
+  const startTest = (
+    topic: TestTopic | 'mixed',
+    difficulty: TestDifficulty,
+    questionCount: number,
+    _adaptive: boolean
+  ) => {
+    const newSession: TestSession = {
+      id: Date.now().toString(),
+      topic,
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+      affectiveStateAtStart: derived.affectiveState,
+      stressScoreAtStart: derived.stressScore,
+      answers: [],
+      adaptationEvents: [],
+      finalScore: null,
+      weakTopics: [],
+      peakDifficulty: difficulty,
+    };
+    setActiveTestSession(newSession);
+  };
+
+  const submitTestAnswer = (questionId: string, selectedIndex: number, timeTaken: number) => {
+    setActiveTestSession((current) => {
+      if (!current) return null;
+      const question = testQuestionBank.find((q) => q.id === questionId);
+      if (!question) return current;
+
+      const correct = selectedIndex === question.correctIndex;
+      const newAnswer: TestAnswer = {
+        questionId,
+        selectedIndex,
+        correct,
+        timeTakenSeconds: timeTaken,
+        difficulty: question.difficulty,
+        topic: question.topic,
+      };
+      const allAnswers = [...current.answers, newAnswer];
+
+      // Count consecutive wrong/correct from the end
+      let consWrong = 0;
+      let consCorrect = 0;
+      for (let i = allAnswers.length - 1; i >= 0; i--) {
+        if (!allAnswers[i].correct) consWrong++;
+        else break;
+      }
+      for (let i = allAnswers.length - 1; i >= 0; i--) {
+        if (allAnswers[i].correct) consCorrect++;
+        else break;
+      }
+
+      const { newDifficulty, event } = getAdaptiveDifficulty(question.difficulty, consWrong, consCorrect);
+
+      const newEvents: AdaptationEvent[] = event
+        ? [
+            ...current.adaptationEvents,
+            {
+              atQuestion: allAnswers.length,
+              fromDifficulty: question.difficulty,
+              toDifficulty: newDifficulty,
+              reason: event,
+            },
+          ]
+        : current.adaptationEvents;
+
+      const diffOrder: TestDifficulty[] = ['easy', 'medium', 'hard'];
+      const peakDifficulty: TestDifficulty =
+        diffOrder.indexOf(newDifficulty) > diffOrder.indexOf(current.peakDifficulty)
+          ? newDifficulty
+          : current.peakDifficulty;
+
+      return { ...current, answers: allAnswers, adaptationEvents: newEvents, peakDifficulty };
+    });
+  };
+
+  const finishTest = () => {
+    if (!activeTestSession) return;
+
+    const results = calculateTestResults(
+      activeTestSession.answers,
+      activeTestSession.stressScoreAtStart,
+      activeTestSession.affectiveStateAtStart
+    );
+
+    const finished: TestSession = {
+      ...activeTestSession,
+      finishedAt: new Date().toISOString(),
+      finalScore: results.score,
+      weakTopics: results.weakTopics,
+      peakDifficulty: results.peakDifficulty,
+    };
+
+    setTestHistory((prev) => [finished, ...prev]);
+    setActiveTestSession(null);
   };
 
   const value = useMemo<MindTraceContextValue>(
@@ -616,6 +781,8 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
       onboardingCompleted,
       authUser,
       syncError,
+      testHistory,
+      activeTestSession,
       updateDraft,
       submitCheckIn,
       setChatMode,
@@ -669,9 +836,13 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      startTest,
+      submitTestAnswer,
+      finishTest,
     }),
     [
       activeComfortRecordingId,
+      activeTestSession,
       authUser,
       chatMessages,
       chatMode,
@@ -689,6 +860,7 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
       rescueCompletionRate,
       syncError,
       studentProfile,
+      testHistory,
     ]
   );
 

@@ -55,23 +55,25 @@ export default function PulseScreen() {
         <SectionHeader title="How are you feeling?" />
 
         <Text style={styles.stepLabel}>Mood score</Text>
-        <Text style={styles.bigScore}>{moodScore}/10</Text>
-        <View style={styles.scoreRow}>
-          {Array.from({ length: 10 }, (_, index) => {
-            const value = index + 1;
-            const isActive = value === moodScore;
+        <Surface style={styles.scoreCard}>
+          <Text style={styles.bigScore}>{moodScore}/10</Text>
+          <View style={styles.scoreRow}>
+            {Array.from({ length: 10 }, (_, index) => {
+              const value = index + 1;
+              const isActive = value === moodScore;
 
-            return (
-              <Pressable
-                key={value}
-                onPress={() => updateDraft({ moodScore: value })}
-                style={[styles.scoreDot, isActive && styles.scoreDotActive]}
-              >
-                <Text style={[styles.scoreLabel, isActive && styles.scoreLabelActive]}>{value}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+              return (
+                <Pressable
+                  key={value}
+                  onPress={() => updateDraft({ moodScore: value })}
+                  style={[styles.scoreDot, isActive && styles.scoreDotActive]}
+                >
+                  <Text style={[styles.scoreLabel, isActive && styles.scoreLabelActive]}>{value}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Surface>
 
         <Text style={[styles.stepLabel, styles.spaced]}>Signal</Text>
         <View style={commonStyles.chipRow}>
@@ -182,6 +184,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...shadows.card,
   },
+  scoreCard: {
+    backgroundColor: palette.mintSoft,
+    borderRadius: radii.md,
+    marginTop: spacing.md,
+    padding: spacing.md,
+  },
   stepLabel: {
     color: palette.ink,
     fontSize: 15,
@@ -232,7 +240,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   emojiChipActive: {
-    backgroundColor: '#EEF4FF',
+    backgroundColor: palette.primaryMuted,
     borderColor: palette.primary,
   },
   emoji: {
@@ -256,6 +264,7 @@ const styles = StyleSheet.create({
   },
   dualPanelCompact: {
     flexDirection: 'column',
+    paddingBottom: spacing.xl,
   },
   dualColumn: {
     flex: 1,
@@ -271,8 +280,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   optionCardActive: {
-    backgroundColor: '#EEF8F4',
-    borderColor: palette.secondary,
+    backgroundColor: palette.primaryMuted,
+    borderColor: palette.primary,
   },
   chipTitle: {
     color: palette.navy,
@@ -290,6 +299,8 @@ const styles = StyleSheet.create({
   footerRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     justifyContent: 'space-between',
     marginTop: spacing.lg,
   },

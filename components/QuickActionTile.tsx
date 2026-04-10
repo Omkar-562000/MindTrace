@@ -29,9 +29,11 @@ export function QuickActionTile({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: palette.surface,
+    borderColor: palette.border,
     borderRadius: radii.md,
+    borderWidth: 1,
     flex: 1,
-    minHeight: 132,
+    minHeight: 120,
     padding: spacing.md,
     ...shadows.card,
   },
@@ -44,7 +46,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   title: {
-    color: palette.navy,
+    color: palette.ink,
     fontSize: 16,
     fontWeight: '700',
     marginTop: spacing.md,

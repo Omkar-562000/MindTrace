@@ -11,6 +11,12 @@ const statusColor = {
   green: palette.secondary,
 };
 
+const stripColor = {
+  red: palette.danger,
+  yellow: '#F0A500',
+  green: palette.secondary,
+};
+
 const velocityArrow = {
   recovering: 'trending-down',
   stable: 'remove',
@@ -20,7 +26,12 @@ const velocityArrow = {
 
 export function StudentRiskCard({ student }: { student: StudentSnapshot }) {
   return (
-    <Surface style={styles.card}>
+    <Surface
+      style={[
+        styles.card,
+        { borderLeftColor: stripColor[student.stressStatus] },
+      ]}
+    >
       <View style={styles.row}>
         <View style={styles.identity}>
           <Text style={styles.name}>{student.name}</Text>
@@ -61,9 +72,10 @@ export function StudentRiskCard({ student }: { student: StudentSnapshot }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: palette.surface,
+    borderLeftWidth: 4,
     borderRadius: radii.md,
-    padding: spacing.md,
     marginBottom: spacing.md,
+    padding: spacing.md,
     ...shadows.card,
   },
   row: {

@@ -12,9 +12,11 @@ export function SectionHeader({
 }) {
   return (
     <View style={styles.container}>
-      <Text variant="titleMedium" style={styles.title}>
-        {title}
-      </Text>
+      <View style={styles.titleAccent}>
+        <Text variant="titleMedium" style={styles.title}>
+          {title}
+        </Text>
+      </View>
       {subtitle ? (
         <Text variant="bodyMedium" style={styles.subtitle}>
           {subtitle}
@@ -28,13 +30,19 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.md,
   },
+  titleAccent: {
+    borderLeftColor: palette.primary,
+    borderLeftWidth: 3,
+    paddingLeft: 10,
+  },
   title: {
     color: palette.navy,
-    fontWeight: '700',
+    fontWeight: '800',
     marginBottom: 4,
   },
   subtitle: {
     color: palette.slate,
     lineHeight: 20,
+    marginTop: 4,
   },
 });

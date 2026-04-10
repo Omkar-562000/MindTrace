@@ -190,6 +190,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     color: palette.slate,
+    marginBottom: spacing.md,
     marginTop: spacing.sm,
   },
   card: {
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   featureCard: {
-    backgroundColor: '#FCFDFF',
+    backgroundColor: palette.mintSoft,
     borderColor: palette.border,
     borderRadius: radii.md,
     borderWidth: 1,

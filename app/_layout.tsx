@@ -65,96 +65,100 @@ function RootShell({
         <Animated.View style={{ flex: 1, opacity: shellOpacity, transform: [{ translateY: shellRise }] }}>
           {isAuthenticated ? (
             onboardingCompleted ? (
-            <Tabs
-              screenOptions={{
-                headerShown: false,
-                tabBarActiveTintColor: palette.primary,
-                tabBarInactiveTintColor: '#8C96A8',
-                tabBarStyle: {
-                  backgroundColor: '#F8FBFF',
-                  borderTopColor: palette.border,
-                  borderTopWidth: 1,
-                  elevation: 8,
-                  height: 74,
-                  paddingTop: 8,
-                  paddingBottom: 10,
-                },
-                tabBarLabelStyle: {
-                  fontSize: 11,
-                  fontWeight: '700',
-                },
-              }}
-            >
-              <Tabs.Screen
-                name="index"
-                options={{
-                  title: 'Home',
-                  tabBarIcon: ({ color, size }) => <Ionicons color={color} name="home-outline" size={size} />,
+              <Tabs
+                screenOptions={{
+                  headerShown: false,
+                  tabBarActiveTintColor: palette.primary,
+                  tabBarInactiveTintColor: '#8C96A8',
+                  tabBarStyle: {
+                    backgroundColor: palette.mist,
+                    borderTopColor: palette.border,
+                    borderTopWidth: 1,
+                    elevation: 8,
+                    height: 74,
+                    paddingTop: 8,
+                    paddingBottom: 10,
+                  },
+                  tabBarLabelStyle: {
+                    fontSize: 11,
+                    fontWeight: '700',
+                  },
                 }}
-              />
-              <Tabs.Screen
-                name="checkin"
-                options={{
-                  title: 'Pulse',
-                  tabBarIcon: ({ color, size }) => <Ionicons color={color} name="sparkles-outline" size={size} />,
-                }}
-              />
-              <Tabs.Screen
-                name="journal"
-                options={{
-                  title: 'Journal',
-                  tabBarIcon: ({ color, size }) => <Ionicons color={color} name="book-outline" size={size} />,
-                }}
-              />
-              <Tabs.Screen
-                name="chat"
-                options={{
-                  title: 'Shift',
-                  tabBarIcon: ({ color, size }) => (
-                    <Ionicons color={color} name="chatbubble-ellipses-outline" size={size} />
-                  ),
-                }}
-              />
-              <Tabs.Screen
-                name="profile"
-                options={{
-                  title: 'You',
-                  tabBarIcon: ({ color, size }) => (
-                    <Ionicons color={color} name="person-circle-outline" size={size} />
-                  ),
-                }}
-              />
-              <Tabs.Screen
-                name="dashboard"
-                options={{
-                  href: null,
-                }}
-              />
-              <Tabs.Screen
-                name="studyplan"
-                options={{
-                  href: null,
-                }}
-              />
-              <Tabs.Screen
-                name="comfort"
-                options={{
-                  href: null,
-                }}
-              />
-              <Tabs.Screen
-                name="rescue"
-                options={{
-                  href: null,
-                }}
-              />
-              <Tabs.Screen
-                name="counselor"
-                options={{
-                  href: null,
-                }}
-              />
-            </Tabs>
+              >
+                <Tabs.Screen
+                  name="index"
+                  options={{
+                    title: 'Home',
+                    tabBarIcon: ({ color, size }) => <Ionicons color={color} name="home-outline" size={size} />,
+                  }}
+                />
+                <Tabs.Screen
+                  name="checkin"
+                  options={{
+                    title: 'Pulse',
+                    tabBarIcon: ({ color, size }) => <Ionicons color={color} name="sparkles-outline" size={size} />,
+                  }}
+                />
+                <Tabs.Screen
+                  name="journal"
+                  options={{
+                    title: 'Journal',
+                    tabBarIcon: ({ color, size }) => <Ionicons color={color} name="book-outline" size={size} />,
+                  }}
+                />
+                <Tabs.Screen
+                  name="test"
+                  options={{
+                    title: 'Test',
+                    tabBarIcon: ({ color, size }) => <Ionicons color={color} name="school-outline" size={size} />,
+                  }}
+                />
+                <Tabs.Screen
+                  name="chat"
+                  options={{
+                    title: 'Shift',
+                    tabBarIcon: ({ color, size }) => (
+                      <Ionicons color={color} name="chatbubble-ellipses-outline" size={size} />
+                    ),
+                  }}
+                />
+                <Tabs.Screen
+                  name="profile"
+                  options={{
+                    href: null,
+                  }}
+                />
+                <Tabs.Screen
+                  name="dashboard"
+                  options={{
+                    href: null,
+                  }}
+                />
+                <Tabs.Screen
+                  name="studyplan"
+                  options={{
+                    href: null,
+                  }}
+                />
+                <Tabs.Screen
+                  name="comfort"
+                  options={{
+                    href: null,
+                  }}
+                />
+                <Tabs.Screen
+                  name="rescue"
+                  options={{
+                    href: null,
+                  }}
+                />
+                <Tabs.Screen
+                  name="counselor"
+                  options={{
+                    href: null,
+                  }}
+                />
+              </Tabs>
             ) : (
               <OnboardingFlow />
             )

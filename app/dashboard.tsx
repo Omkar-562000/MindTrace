@@ -24,6 +24,13 @@ const affectiveTone = {
   boredom: 'purple',
 } as const;
 
+const velocityLabel: Record<string, string> = {
+  recovering: 'Bouncing Back',
+  stable: 'Holding Steady',
+  declining: 'Slipping',
+  critical: 'Needs Care',
+};
+
 export default function DashboardScreen() {
   const {
     affectiveState,
@@ -56,59 +63,69 @@ export default function DashboardScreen() {
         </LinearGradient>
       </AnimatedReveal>
 
-      <AnimatedReveal delay={70} style={styles.metrics}>
-        <MetricTile label="Stress" support={stressStatus} tone="red" value={`${stressScore}`} />
-        <MetricTile label="Readiness" support="Live score" tone="green" value={`${readinessScore}%`} />
-        <MetricTile label="Velocity" support="7 days" tone={velocityTone[velocity]} value={velocity} />
-      </AnimatedReveal>
+      <View style={styles.contentGap}>
+        <AnimatedReveal delay={70} style={styles.metrics}>
+          <MetricTile label="Stress" support={stressStatus} tone="red" value={`${stressScore}`} />
+          <MetricTile label="Readiness" support="Live score" tone="green" value={`${readinessScore}%`} />
+        </AnimatedReveal>
 
-      <AnimatedReveal delay={120} style={styles.metrics}>
-        <MetricTile label="Rescue" support="Progress" tone="blue" value={`${rescueCompletionRate}%`} />
-        <MetricTile
-          label="Next up"
-          support={nextStudyTopic ? nextStudyTopic.subject : 'All set'}
-          tone="purple"
-          value={nextStudyTopic ? nextStudyTopic.title.split(' ').slice(0, 2).join(' ') : 'Complete'}
-        />
-      </AnimatedReveal>
+        <AnimatedReveal delay={100}>
+          <MetricTile
+            label="Velocity"
+            support="7 days"
+            tone={velocityTone[velocity]}
+            value={velocityLabel[velocity] ?? velocity}
+          />
+        </AnimatedReveal>
 
-      <AnimatedReveal delay={170}>
-        <Surface style={styles.focusCard}>
-          <Text style={styles.focusEyebrow}>Focus</Text>
-          <Text style={styles.focusTitle}>{notification}</Text>
-        </Surface>
-      </AnimatedReveal>
+        <AnimatedReveal delay={140} style={styles.metrics}>
+          <MetricTile label="Rescue" support="Progress" tone="blue" value={`${rescueCompletionRate}%`} />
+          <MetricTile
+            label="Next up"
+            support={nextStudyTopic ? nextStudyTopic.subject : 'All set'}
+            tone="purple"
+            value={nextStudyTopic ? nextStudyTopic.title.split(' ').slice(0, 2).join(' ') : 'Complete'}
+          />
+        </AnimatedReveal>
 
-      <AnimatedReveal delay={220}>
-        <Surface style={styles.chartCard}>
-          <View style={styles.chartHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Trend</Text>
-              <Text style={styles.sectionSub}>Last 7 days</Text>
+        <AnimatedReveal delay={170}>
+          <Surface style={styles.focusCard}>
+            <Text style={styles.focusEyebrow}>Focus</Text>
+            <Text style={styles.focusTitle}>{notification}</Text>
+          </Surface>
+        </AnimatedReveal>
+
+        <AnimatedReveal delay={220}>
+          <Surface style={styles.chartCard}>
+            <View style={styles.chartHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Trend</Text>
+                <Text style={styles.sectionSub}>Last 7 days</Text>
+              </View>
+              <View style={styles.badgeRow}>
+                <StatusPill label={affectiveState} tone={affectiveTone[affectiveState]} />
+                <StatusPill label={velocityLabel[velocity] ?? velocity} tone={velocityTone[velocity]} />
+              </View>
             </View>
-            <View style={styles.badgeRow}>
-              <StatusPill label={affectiveState} tone={affectiveTone[affectiveState]} />
-              <StatusPill label={velocity} tone={velocityTone[velocity]} />
-            </View>
+            <TrendChart data={moodHistory} />
+          </Surface>
+        </AnimatedReveal>
+
+        <AnimatedReveal delay={280}>
+          <View style={styles.bottomGrid}>
+            <Surface style={styles.bottomCard}>
+              <Text style={styles.bottomEyebrow}>Current state</Text>
+              <Text style={styles.bottomValue}>{affectiveState}</Text>
+              <Text style={styles.bottomText}>Stay with the pace that feels sustainable today.</Text>
+            </Surface>
+            <Surface style={styles.bottomCard}>
+              <Text style={styles.bottomEyebrow}>Focus time</Text>
+              <Text style={styles.bottomValue}>{studentProfile.focusMinutes} min</Text>
+              <Text style={styles.bottomText}>Keep the session light, clear, and repeatable.</Text>
+            </Surface>
           </View>
-          <TrendChart data={moodHistory} />
-        </Surface>
-      </AnimatedReveal>
-
-      <AnimatedReveal delay={280}>
-        <View style={styles.bottomGrid}>
-          <Surface style={styles.bottomCard}>
-            <Text style={styles.bottomEyebrow}>Current state</Text>
-            <Text style={styles.bottomValue}>{affectiveState}</Text>
-            <Text style={styles.bottomText}>Stay with the pace that feels sustainable today.</Text>
-          </Surface>
-          <Surface style={styles.bottomCard}>
-            <Text style={styles.bottomEyebrow}>Focus time</Text>
-            <Text style={styles.bottomValue}>{studentProfile.focusMinutes} min</Text>
-            <Text style={styles.bottomText}>Keep the session light, clear, and repeatable.</Text>
-          </Surface>
-        </View>
-      </AnimatedReveal>
+        </AnimatedReveal>
+      </View>
     </ScreenShell>
   );
 }
@@ -120,7 +137,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   eyebrow: {
-    color: '#D5E4FF',
+    color: '#B8F0D0',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.7,
@@ -142,16 +159,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.md,
   },
+  contentGap: {
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
   metrics: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
-    marginTop: spacing.md,
   },
   focusCard: {
     backgroundColor: palette.surface,
     borderRadius: radii.md,
-    marginTop: spacing.md,
     padding: spacing.lg,
     ...shadows.card,
   },
@@ -171,7 +190,6 @@ const styles = StyleSheet.create({
   chartCard: {
     backgroundColor: palette.surface,
     borderRadius: radii.md,
-    marginTop: spacing.md,
     padding: spacing.md,
     ...shadows.card,
   },
@@ -196,7 +214,6 @@ const styles = StyleSheet.create({
   },
   bottomGrid: {
     gap: spacing.md,
-    marginTop: spacing.md,
   },
   bottomCard: {
     backgroundColor: palette.surface,

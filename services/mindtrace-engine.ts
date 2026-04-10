@@ -5,11 +5,15 @@ import {
   RescuePlanStep,
   SleepTiming,
   StudyTopic,
+  TestAnswer,
+  TestDifficulty,
+  TestTopic,
   VelocityState,
   counselorStudentsSeed,
   examPressureOptions,
   moodHistorySeed,
   sleepOptions,
+  testTopicMeta,
 } from '@/constants/DummyData';
 
 export type CheckInPayload = {
@@ -340,3 +344,100 @@ export const getRescuePlan = (
 };
 
 export const getCounselorStudents = () => counselorStudentsSeed;
+
+// ─── Adaptive Test Engine ───────────────────────────────────────────────────
+
+export const getAdaptiveDifficulty = (
+  currentDifficulty: TestDifficulty,
+  consecutiveWrong: number,
+  consecutiveCorrect: number
+): { newDifficulty: TestDifficulty; event: 'three_wrong' | 'four_correct' | null } => {
+  const order: TestDifficulty[] = ['easy', 'medium', 'hard'];
+  const idx = order.indexOf(currentDifficulty);
+  if (consecutiveWrong >= 3 && idx > 0) return { newDifficulty: order[idx - 1], event: 'three_wrong' };
+  if (consecutiveCorrect >= 4 && idx < 2) return { newDifficulty: order[idx + 1], event: 'four_correct' };
+  return { newDifficulty: currentDifficulty, event: null };
+};
+
+export const calculateTestResults = (
+  answers: TestAnswer[],
+  sessionStressScore: number,
+  sessionAffectiveState: AffectiveState
+): {
+  score: number;
+  weakTopics: TestTopic[];
+  topicBreakdown: Record<string, { correct: number; total: number }>;
+  moodCorrelation: { earlyAccuracy: number; lateAccuracy: number; insight: string };
+  peakDifficulty: TestDifficulty;
+} => {
+  if (!answers.length) {
+    return {
+      score: 0,
+      weakTopics: [],
+      topicBreakdown: {},
+      moodCorrelation: { earlyAccuracy: 0, lateAccuracy: 0, insight: 'No answers recorded.' },
+      peakDifficulty: 'easy',
+    };
+  }
+
+  const correct = answers.filter((a) => a.correct).length;
+  const score = Math.round((correct / answers.length) * 100);
+
+  const topicMap: Record<string, { correct: number; total: number }> = {};
+  answers.forEach((a) => {
+    if (!topicMap[a.topic]) topicMap[a.topic] = { correct: 0, total: 0 };
+    topicMap[a.topic].total++;
+    if (a.correct) topicMap[a.topic].correct++;
+  });
+
+  const weakTopics = (Object.keys(topicMap) as TestTopic[]).filter(
+    (t) => topicMap[t].total > 0 && topicMap[t].correct / topicMap[t].total < 0.5
+  );
+
+  const half = Math.ceil(answers.length / 2);
+  const early = answers.slice(0, half);
+  const late = answers.slice(half);
+  const earlyAcc = Math.round((early.filter((a) => a.correct).length / Math.max(early.length, 1)) * 100);
+  const lateAcc = Math.round((late.filter((a) => a.correct).length / Math.max(late.length, 1)) * 100);
+
+  const insight =
+    lateAcc > earlyAcc
+      ? 'Your accuracy improved as the test progressed — you warm up well under pressure.'
+      : sessionStressScore > 60
+        ? 'High stress at test start may have affected early performance. Lower stress sessions tend to show better results.'
+        : 'Consistent performance throughout — your preparation is solid.';
+
+  const hardAnswered = answers.some((a) => a.difficulty === 'hard');
+  const medAnswered = answers.some((a) => a.difficulty === 'medium');
+  const peakDifficulty: TestDifficulty = hardAnswered ? 'hard' : medAnswered ? 'medium' : 'easy';
+
+  return {
+    score,
+    weakTopics,
+    topicBreakdown: topicMap,
+    moodCorrelation: { earlyAccuracy: earlyAcc, lateAccuracy: lateAcc, insight },
+    peakDifficulty,
+  };
+};
+
+export const generateTestStudyRecommendations = (
+  weakTopics: TestTopic[],
+  affectiveState: AffectiveState,
+  stressScore: number
+): { topic: TestTopic; label: string; approach: string; duration: string }[] => {
+  const approachByState: Record<AffectiveState, string> = {
+    curiosity: 'Deep dive with challenge problems',
+    confusion: 'Concept map + one worked example',
+    frustration: 'Flashcards and easy recall only',
+    boredom: 'Quick quiz format, timed rounds',
+  };
+
+  const durationByStress = stressScore > 65 ? '15 min max' : stressScore > 40 ? '25 min' : '35 min';
+
+  return weakTopics.slice(0, 3).map((topic) => ({
+    topic,
+    label: testTopicMeta[topic].label,
+    approach: approachByState[affectiveState],
+    duration: durationByStress,
+  }));
+};

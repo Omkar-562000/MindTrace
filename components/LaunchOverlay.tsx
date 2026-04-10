@@ -82,7 +82,7 @@ export function LaunchOverlay({
         },
       ]}
     >
-      <LinearGradient colors={['#09111F', '#17345F', '#2A6EF0']} style={styles.background}>
+      <LinearGradient colors={['#0D2818', '#1A5C38', '#2D9B5A']} style={styles.background}>
         <View style={styles.topGlow} />
         <View style={styles.center}>
           <View style={styles.logoCard}>
@@ -98,14 +98,14 @@ export function LaunchOverlay({
           <View style={styles.showcase}>
             <Image
               source={{
-                uri: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80',
+                uri: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80',
               }}
               style={[styles.previewCard, styles.previewPrimary]}
               contentFit="cover"
             />
             <Image
               source={{
-                uri: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
+                uri: 'https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?auto=format&fit=crop&w=1200&q=80',
               }}
               style={[styles.previewCard, styles.previewSecondary]}
               contentFit="cover"
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   topGlow: {
-    backgroundColor: 'rgba(159, 212, 255, 0.18)',
+    backgroundColor: 'rgba(184,240,208,0.15)',
     borderRadius: 220,
     height: 220,
     position: 'absolute',
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     width: 74,
   },
   kicker: {
-    color: '#C7D8FF',
+    color: '#B8F0D0',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.9,
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   footerPill: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: radii.pill,
     paddingHorizontal: 14,
     paddingVertical: 9,

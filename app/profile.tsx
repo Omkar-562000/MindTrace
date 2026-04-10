@@ -166,44 +166,44 @@ export default function ProfileScreen() {
       ) : null}
 
       {isAuthenticated ? (
-      <Surface style={styles.card}>
-        <SectionHeader title="Details" />
+        <Surface style={styles.card}>
+          <SectionHeader title="Details" />
 
-        <ScrollView nestedScrollEnabled={false} scrollEnabled={false}>
-          {onboardingQuestions.map((question) => (
-            <View key={question.id} style={styles.field}>
-              <Text style={styles.label}>{question.label}</Text>
-              <Text style={styles.helper}>{question.helper}</Text>
-              <TextInput
-                mode="outlined"
-                multiline={question.id === 'stressTrigger' || question.id === 'supportStyle'}
-                numberOfLines={question.id === 'stressTrigger' || question.id === 'supportStyle' ? 3 : 1}
-                onChangeText={(value) =>
-                  updateProfile(
-                    question.id as
-                      | 'fullName'
-                      | 'institution'
-                      | 'program'
-                      | 'semester'
-                      | 'examWindow'
-                      | 'sleepGoal'
-                      | 'studyPreference'
-                      | 'stressTrigger'
-                      | 'supportStyle',
-                    value
-                  )
-                }
-                placeholder={question.placeholder}
-                value={String(studentProfile[question.id as keyof typeof studentProfile] ?? '')}
-              />
-            </View>
-          ))}
-        </ScrollView>
+          <ScrollView nestedScrollEnabled={false} scrollEnabled={false}>
+            {onboardingQuestions.map((question) => (
+              <View key={question.id} style={styles.field}>
+                <Text style={styles.label}>{question.label}</Text>
+                <Text style={styles.helper}>{question.helper}</Text>
+                <TextInput
+                  mode="outlined"
+                  multiline={question.id === 'stressTrigger' || question.id === 'supportStyle'}
+                  numberOfLines={question.id === 'stressTrigger' || question.id === 'supportStyle' ? 3 : 1}
+                  onChangeText={(value) =>
+                    updateProfile(
+                      question.id as
+                        | 'fullName'
+                        | 'institution'
+                        | 'program'
+                        | 'semester'
+                        | 'examWindow'
+                        | 'sleepGoal'
+                        | 'studyPreference'
+                        | 'stressTrigger'
+                        | 'supportStyle',
+                      value
+                    )
+                  }
+                  placeholder={question.placeholder}
+                  value={String(studentProfile[question.id as keyof typeof studentProfile] ?? '')}
+                />
+              </View>
+            ))}
+          </ScrollView>
 
-        <Button mode="contained" style={styles.button}>
-          Save profile
-        </Button>
-      </Surface>
+          <Button mode="contained" style={styles.button}>
+            Save profile
+          </Button>
+        </Surface>
       ) : null}
 
       <Snackbar onDismiss={() => setSnackbarMessage('')} visible={Boolean(snackbarMessage)}>

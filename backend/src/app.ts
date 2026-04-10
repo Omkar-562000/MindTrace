@@ -3,6 +3,7 @@ import express from "express";
 import authRoutes from "./routes/auth.routes";
 import profileRoutes from "./routes/profile.routes";
 import onboardingRoutes from "./routes/onboarding.routes";
+import aiRoutes from "./routes/ai.routes";
 import checkinRoutes from "./routes/checkin.routes";
 import analyzeRoutes from "./routes/analyze.routes";
 import studyPlanRoutes from "./routes/study-plan.routes";
@@ -34,6 +35,7 @@ app.get("/health", (_req, res) => {
 app.use("/auth", authRoutes);
 app.use("/profile", profileRoutes);
 app.use("/onboarding", onboardingRoutes);
+app.use("/ai", aiRoutes);
 app.use("/checkin", checkinRoutes);
 app.use("/analyze", analyzeRoutes);
 app.use("/study-plan", studyPlanRoutes);

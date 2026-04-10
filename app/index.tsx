@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, useRouter } from 'expo-router';
 import { Button, Surface, Text } from 'react-native-paper';
@@ -89,7 +89,7 @@ export default function CheckInScreen() {
         : completionRate >= 100
           ? {
               title: 'Take a comfort pause',
-              subtitle: 'You have completed today’s study queue. Use a trusted voice note to wind down or reset.',
+              subtitle: 'You have completed today\u2019s study queue. Use a trusted voice note to wind down or reset.',
               button: 'Open Care Circle',
               route: comfortRoute,
             }
@@ -107,12 +107,32 @@ export default function CheckInScreen() {
             route: comfortRoute,
           };
 
+  const initials = studentProfile.name
+    .split(' ')
+    .slice(0, 2)
+    .map((word) => word.charAt(0))
+    .join('');
+
   return (
     <ScreenShell>
+      {/* Top bar — profile access */}
+      <View style={styles.topBar}>
+        <Text style={styles.topBarTitle}>MindTrace</Text>
+        <Pressable onPress={() => router.push('/profile')}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+        </Pressable>
+      </View>
+
       <AnimatedReveal>
         <LinearGradient colors={emotionTheme.gradient} style={styles.workspaceHero}>
+          {/* Decorative circle */}
+          <View style={styles.heroDecorCircle} />
           <View style={styles.heroTopRow}>
-            <Text style={styles.kicker}>MindTrace</Text>
+            <View style={styles.kickerWrap}>
+              <Text style={styles.kicker}>MindTrace</Text>
+            </View>
             <EmotionPulse color={emotionTheme.soft} />
           </View>
           <Text style={commonStyles.heroTitle}>Good evening, {studentProfile.name.split(' ')[0]}</Text>
@@ -141,13 +161,13 @@ export default function CheckInScreen() {
 
       <AnimatedReveal delay={120}>
         <Surface style={[styles.primaryActionCard, { backgroundColor: emotionTheme.surfaceTint }]}>
-        <Text style={styles.primaryActionEyebrow}>Recommended now</Text>
-        <Text style={styles.primaryActionTitle}>{primaryAction.title}</Text>
-        <Text style={styles.primaryActionSubtitle}>{primaryAction.subtitle}</Text>
-        <Button mode="contained" onPress={() => router.push(primaryAction.route)} style={styles.primaryActionButton}>
-          {primaryAction.button}
-        </Button>
-      </Surface>
+          <Text style={styles.primaryActionEyebrow}>Recommended now</Text>
+          <Text style={styles.primaryActionTitle}>{primaryAction.title}</Text>
+          <Text style={styles.primaryActionSubtitle}>{primaryAction.subtitle}</Text>
+          <Button mode="contained" onPress={() => router.push(primaryAction.route)} style={styles.primaryActionButton}>
+            {primaryAction.button}
+          </Button>
+        </Surface>
       </AnimatedReveal>
 
       <AnimatedReveal delay={170} style={[styles.feedbackRow, { borderLeftColor: emotionTheme.accent }]}>
@@ -157,61 +177,61 @@ export default function CheckInScreen() {
 
       <AnimatedReveal delay={210}>
         <Surface style={styles.panel}>
-        <SectionHeader title="Quick actions" />
-        <View style={styles.quickActionRow}>
-          <QuickActionTile
-            icon="create-outline"
-            subtitle="Update your status"
-            title="Pulse"
-            onPress={() => router.push(pulseRoute)}
-          />
-          <QuickActionTile
-            icon="flash-outline"
-            subtitle="Reset and restart"
-            title="Reset"
-            onPress={() => router.push(rescueRoute)}
-          />
-        </View>
-        <View style={styles.quickActionRow}>
-          <QuickActionTile
-            icon="chatbubble-ellipses-outline"
-            subtitle="Open support chat"
-            title="Shift"
-            onPress={() => router.push('/chat')}
-          />
-          <QuickActionTile
-            icon="heart-circle-outline"
-            subtitle="Trusted voice notes"
-            title="Care Circle"
-            onPress={() => router.push(comfortRoute)}
-          />
-        </View>
-      </Surface>
+          <SectionHeader title="Quick actions" />
+          <View style={styles.quickActionRow}>
+            <QuickActionTile
+              icon="create-outline"
+              subtitle="Update your status"
+              title="Pulse"
+              onPress={() => router.push(pulseRoute)}
+            />
+            <QuickActionTile
+              icon="flash-outline"
+              subtitle="Reset and restart"
+              title="Reset"
+              onPress={() => router.push(rescueRoute)}
+            />
+          </View>
+          <View style={styles.quickActionRow}>
+            <QuickActionTile
+              icon="chatbubble-ellipses-outline"
+              subtitle="Open support chat"
+              title="Shift"
+              onPress={() => router.push('/chat')}
+            />
+            <QuickActionTile
+              icon="heart-circle-outline"
+              subtitle="Trusted voice notes"
+              title="Care Circle"
+              onPress={() => router.push(comfortRoute)}
+            />
+          </View>
+        </Surface>
       </AnimatedReveal>
 
       <AnimatedReveal delay={250}>
         <Surface style={[styles.banner, { backgroundColor: emotionTheme.surfaceTint }]}>
-        <Text style={styles.bannerTitle}>Today&apos;s next best action</Text>
-        <Text style={styles.bannerText}>{notification}</Text>
-      </Surface>
+          <Text style={styles.bannerTitle}>Today&apos;s next best action</Text>
+          <Text style={styles.bannerText}>{notification}</Text>
+        </Surface>
       </AnimatedReveal>
 
       <AnimatedReveal delay={290}>
         <Surface style={styles.panel}>
-        <SectionHeader title="Care Circle" />
-        <ComfortMessageCard
-          active={activeComfortRecordingId === comfortPreview?.id}
-          item={comfortPreview}
-          onPress={() => playComfortRecording(comfortPreview.id)}
-        />
-        <View style={styles.actionSpacing} />
-        <ActionRow
-          icon="heart-outline"
-          subtitle="Open your saved audio notes"
-          title="View all recordings"
-          onPress={() => router.push(comfortRoute)}
-        />
-      </Surface>
+          <SectionHeader title="Care Circle" />
+          <ComfortMessageCard
+            active={activeComfortRecordingId === comfortPreview?.id}
+            item={comfortPreview}
+            onPress={() => playComfortRecording(comfortPreview.id)}
+          />
+          <View style={styles.actionSpacing} />
+          <ActionRow
+            icon="heart-outline"
+            subtitle="Open your saved audio notes"
+            title="View all recordings"
+            onPress={() => router.push(comfortRoute)}
+          />
+        </Surface>
       </AnimatedReveal>
 
       <AnimatedReveal delay={330}>
@@ -235,24 +255,60 @@ export default function CheckInScreen() {
       </AnimatedReveal>
 
       <AnimatedReveal delay={480}>
-        <Surface style={styles.panel}>
-        <SectionHeader title="Featured" />
-        <View style={styles.stack}>
-          {promoBanners.map((banner) => (
-            <ImageShowcaseCard key={banner.id} banner={banner} />
-          ))}
-        </View>
-      </Surface>
+        <Surface style={[styles.panel, styles.featuredPanel]}>
+          <SectionHeader title="Featured" />
+          <View style={styles.stack}>
+            {promoBanners.map((banner) => (
+              <ImageShowcaseCard key={banner.id} banner={banner} />
+            ))}
+          </View>
+        </Surface>
       </AnimatedReveal>
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
+  topBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  topBarTitle: {
+    color: palette.forestMid,
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  avatarCircle: {
+    alignItems: 'center',
+    backgroundColor: palette.primary,
+    borderRadius: 21,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '800',
+  },
   workspaceHero: {
     borderRadius: radii.lg,
     marginTop: spacing.sm,
+    overflow: 'hidden',
     padding: spacing.lg,
+  },
+  heroDecorCircle: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 110,
+    height: 220,
+    position: 'absolute',
+    right: -60,
+    top: -60,
+    width: 220,
   },
   kicker: {
     color: '#C7D8FF',
@@ -260,6 +316,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
+  },
+  kickerWrap: {
+    flex: 1,
   },
   heroMeta: {
     flexDirection: 'row',
@@ -314,7 +373,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     borderLeftWidth: 4,
     borderRadius: radii.md,
-    marginTop: spacing.md,
+    marginTop: spacing.xl,
     padding: spacing.md,
     ...shadows.card,
   },
@@ -324,14 +383,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   banner: {
-    backgroundColor: '#FFF6EB',
+    backgroundColor: palette.mintSoft,
     borderRadius: radii.md,
     marginTop: spacing.md,
     padding: spacing.md,
     ...shadows.card,
   },
   bannerTitle: {
-    color: palette.warning,
+    color: palette.primary,
     fontWeight: '700',
     marginBottom: 4,
   },
@@ -364,6 +423,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
     ...shadows.card,
+  },
+  featuredPanel: {
+    marginTop: spacing.xl,
   },
   actionSpacing: {
     height: spacing.md,

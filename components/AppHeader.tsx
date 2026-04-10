@@ -40,7 +40,7 @@ export function AppHeader({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: palette.surface,
-    borderColor: 'rgba(61,139,255,0.12)',
+    borderColor: palette.border,
     borderRadius: radii.lg,
     borderWidth: 1,
     padding: spacing.lg,
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     color: palette.primary,
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.6,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   title: {
@@ -76,7 +76,6 @@ const styles = StyleSheet.create({
   },
   mark: {
     alignItems: 'center',
-    backgroundColor: palette.navy,
     borderRadius: radii.md,
     height: 46,
     justifyContent: 'center',
@@ -84,7 +83,7 @@ const styles = StyleSheet.create({
   },
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#EEF4FF',
+    backgroundColor: palette.primaryMuted,
     borderRadius: radii.pill,
     marginTop: spacing.md,
     paddingHorizontal: 12,

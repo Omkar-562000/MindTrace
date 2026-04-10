@@ -35,6 +35,21 @@ export type StudyPlanResponse = {
   plan: string[];
 };
 
+export type AiChatResponse = {
+  reply: string;
+  fallbackUsed: boolean;
+  provider: 'gemini' | 'local';
+};
+
+export type BrainDumpInsightsResponse = {
+  summary: string;
+  stressSignals: string[];
+  affectiveState: 'curiosity' | 'confusion' | 'frustration' | 'boredom';
+  suggestedAction: string;
+  fallbackUsed: boolean;
+  provider: 'gemini' | 'local';
+};
+
 type ApiEnvelope<T> = {
   success: boolean;
   data?: T;
@@ -195,6 +210,32 @@ export const updateOnboarding = (
     createdAt: string;
   }>('/onboarding', {
     method: 'PUT',
+    token,
+    body: payload,
+  });
+
+export const getAiChatReply = (
+  token: string,
+  payload: {
+    message: string;
+    mode: 'listener' | 'laugh' | 'brainstorm';
+    affectiveState?: string;
+    stressScore?: number;
+    name?: string;
+  },
+) =>
+  request<AiChatResponse>('/ai/chat', {
+    method: 'POST',
+    token,
+    body: payload,
+  });
+
+export const analyzeBrainDump = (
+  token: string,
+  payload: { text: string; mood?: string; sleep?: number },
+) =>
+  request<BrainDumpInsightsResponse>('/ai/brain-dump', {
+    method: 'POST',
     token,
     body: payload,
   });
