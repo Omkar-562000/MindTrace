@@ -112,6 +112,10 @@ type MindTraceContextValue = {
   chatMode: ChatMode;
   chatMessages: ChatMessage[];
   lastChatRating: number | null;
+  isChatLoading: boolean;
+  chatError: string | null;
+  lastFailedChatMessage: string | null;
+  retryLastChatMessage: () => void;
   journalEntries: JournalEntry[];
   isAuthenticated: boolean;
   isAuthLoading: boolean;
@@ -225,7 +229,7 @@ const serializeMoodPayload = (
     stressSignals: string[];
     affectiveState: string;
     suggestedAction: string;
-    provider: 'gemini' | 'local';
+    provider: 'gemini' | 'local' | 'nvidia';
   },
 ) =>
   JSON.stringify({
@@ -377,6 +381,9 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
   const [chatMode, setChatModeState] = useState<ChatMode>('listener');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(createWelcomeMessages('listener'));
   const [lastChatRating, setLastChatRating] = useState<number | null>(4);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [lastFailedChatMessage, setLastFailedChatMessage] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [serverAnalysis, setServerAnalysis] = useState<AnalyzeResponse | null>(null);
   const [serverCheckins, setServerCheckins] = useState<CheckinResponse[]>([]);
@@ -624,6 +631,7 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
   const setChatMode = (mode: ChatMode) => {
     setChatModeState(mode);
     setChatMessages(createWelcomeMessages(mode));
+    setChatError(null);
   };
 
   const sendChatMessage = (message: string) => {
@@ -639,11 +647,23 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
     const appendBotReply = (text: string) => {
       setChatMessages((current) => [...current, { id: `bot-${Date.now()}`, role: 'bot', text }]);
     };
+    const appendBotMessageWithId = (id: string, text: string) => {
+      setChatMessages((current) => [...current, { id, role: 'bot', text }]);
+    };
+    const updateBotMessage = (id: string, text: string) => {
+      setChatMessages((current) =>
+        current.map((message) => (message.id === id ? { ...message, text } : message))
+      );
+    };
 
     if (!authToken) {
       appendBotReply(localChatResponses[chatMode]);
       return;
     }
+
+    setIsChatLoading(true);
+    setChatError(null);
+    setLastFailedChatMessage(null);
 
     void getAiChatReply(authToken, {
       message: trimmed,
@@ -653,11 +673,44 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
       name: studentProfile.name,
     })
       .then((response) => {
-        appendBotReply(response.reply || localChatResponses[chatMode]);
+        const reply = response.reply || localChatResponses[chatMode];
+        const shouldStream = (process.env.EXPO_PUBLIC_CHAT_STREAM ?? '').toString() === '1';
+        const botMessageId = `bot-${Date.now()}`;
+
+        if (!shouldStream) {
+          appendBotMessageWithId(botMessageId, reply);
+          return;
+        }
+
+        appendBotMessageWithId(botMessageId, '');
+        let index = 0;
+        const characters = reply.split('');
+
+        const streamInterval = setInterval(() => {
+          index = Math.min(index + 4, characters.length);
+          updateBotMessage(botMessageId, characters.slice(0, index).join(''));
+
+          if (index >= characters.length) {
+            clearInterval(streamInterval);
+          }
+        }, 28);
       })
-      .catch(() => {
+      .catch((error) => {
+        setChatError(error instanceof Error ? error.message : 'Unable to reach AI support');
+        setLastFailedChatMessage(trimmed);
         appendBotReply(localChatResponses[chatMode]);
+      })
+      .finally(() => {
+        setIsChatLoading(false);
       });
+  };
+
+  const retryLastChatMessage = () => {
+    if (!lastFailedChatMessage) {
+      return;
+    }
+
+    sendChatMessage(lastFailedChatMessage);
   };
 
   // ── Test methods ────────────────────────────────────────────────────────
@@ -774,6 +827,10 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
       chatMode,
       chatMessages,
       lastChatRating,
+      isChatLoading,
+      chatError,
+      lastFailedChatMessage,
+      retryLastChatMessage,
       journalEntries,
       isAuthenticated: Boolean(authUser),
       isAuthLoading,
@@ -846,13 +903,17 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
       authUser,
       chatMessages,
       chatMode,
+      chatError,
+      lastFailedChatMessage,
       completedRescueStepIds,
       completedTopicIds,
       completionRate,
       derived,
       draft,
+      isChatLoading,
       isAuthLoading,
       isSubmittingCheckIn,
+      lastFailedChatMessage,
       journalEntries,
       lastChatRating,
       nextStudyTopic,

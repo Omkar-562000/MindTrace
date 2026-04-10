@@ -68,6 +68,10 @@ Default API URL: `http://localhost:4000`
 - `PORT=4000`
 - `JWT_SECRET=mindtrace-demo-secret`
 - `SALT_ROUNDS=10`
+- `NVIDIA_API_KEY=your-nvidia-key`
+- `NVIDIA_MODEL=deepseek-ai/deepseek-v3.2` (optional)
+- `GEMINI_API_KEY=your-gemini-key` (optional fallback)
+- `GEMINI_MODEL=gemini-2.5-flash` (optional)
 
 ## Response Format
 
@@ -101,6 +105,8 @@ Error:
 - `GET /checkin/history`
 - `POST /analyze`
 - `GET /study-plan`
+- `POST /ai/chat`
+- `POST /ai/brain-dump`
 
 ## Example Requests
 

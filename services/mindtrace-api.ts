@@ -38,7 +38,7 @@ export type StudyPlanResponse = {
 export type AiChatResponse = {
   reply: string;
   fallbackUsed: boolean;
-  provider: 'gemini' | 'local';
+  provider: 'gemini' | 'local' | 'nvidia';
 };
 
 export type BrainDumpInsightsResponse = {
@@ -47,7 +47,7 @@ export type BrainDumpInsightsResponse = {
   affectiveState: 'curiosity' | 'confusion' | 'frustration' | 'boredom';
   suggestedAction: string;
   fallbackUsed: boolean;
-  provider: 'gemini' | 'local';
+  provider: 'gemini' | 'local' | 'nvidia';
 };
 
 type ApiEnvelope<T> = {

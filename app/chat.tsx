@@ -21,8 +21,19 @@ const modeDescriptions: Record<ChatMode, string> = {
 const ratingLabels = ['Needs work', 'Okay', 'Helpful', 'Very helpful', 'Excellent'];
 
 export default function ChatScreen() {
-  const { affectiveState, chatMessages, chatMode, lastChatRating, rateChat, sendChatMessage, setChatMode } =
-    useMindTrace();
+  const {
+    affectiveState,
+    chatError,
+    chatMessages,
+    chatMode,
+    isChatLoading,
+    lastFailedChatMessage,
+    lastChatRating,
+    rateChat,
+    retryLastChatMessage,
+    sendChatMessage,
+    setChatMode,
+  } = useMindTrace();
   const [draft, setDraft] = useState('');
   const [showModeModal, setShowModeModal] = useState(false);
   const emotionTheme = getEmotionTheme(affectiveState);
@@ -32,7 +43,7 @@ export default function ChatScreen() {
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
-  }, [chatMessages]);
+  }, [chatMessages, isChatLoading]);
 
   const lastBotIndex = chatMessages.map((m) => m.role).lastIndexOf('bot');
 
@@ -124,7 +135,27 @@ export default function ChatScreen() {
                 </View>
               );
             })}
+            {isChatLoading ? (
+              <View style={styles.botBubbleWrap}>
+                <View style={styles.botAvatarCircle}>
+                  <Ionicons color={palette.primary} name="leaf-outline" size={14} />
+                </View>
+                <View style={styles.botBubbleContent}>
+                  <View style={[styles.botBubble, styles.typingBubble]}>
+                    <Text style={styles.botText}>Shift is typing…</Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
           </ScrollView>
+
+          {chatError ? <Text style={styles.errorText}>{chatError}</Text> : null}
+          {chatError && lastFailedChatMessage ? (
+            <Pressable onPress={retryLastChatMessage} style={styles.retryButton}>
+              <Ionicons color={palette.primary} name="refresh-outline" size={16} />
+              <Text style={styles.retryText}>Retry sending last message</Text>
+            </Pressable>
+          ) : null}
 
           {/* Input area */}
           <View style={styles.inputRow}>
@@ -140,9 +171,9 @@ export default function ChatScreen() {
                 sendChatMessage(draft);
                 setDraft('');
               }}
-              style={styles.sendButton}
+              style={[styles.sendButton, isChatLoading && styles.sendButtonDisabled]}
             >
-              <Ionicons color="white" name="arrow-up-outline" size={20} />
+              <Ionicons color="white" name={isChatLoading ? 'hourglass-outline' : 'arrow-up-outline'} size={20} />
             </Pressable>
           </View>
         </Surface>
@@ -267,6 +298,9 @@ const styles = StyleSheet.create({
     maxWidth: '92%',
     padding: spacing.md,
   },
+  typingBubble: {
+    backgroundColor: palette.mist,
+  },
   botText: {
     color: palette.ink,
     lineHeight: 21,
@@ -298,6 +332,30 @@ const styles = StyleSheet.create({
     height: 48,
     justifyContent: 'center',
     width: 48,
+  },
+  sendButtonDisabled: {
+    backgroundColor: palette.slate,
+  },
+  errorText: {
+    color: palette.danger,
+    marginTop: spacing.sm,
+  },
+  retryButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderColor: palette.primary,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  retryText: {
+    color: palette.primary,
+    fontSize: 13,
+    fontWeight: '700',
   },
   modalOverlay: {
     backgroundColor: 'rgba(0,0,0,0.4)',
