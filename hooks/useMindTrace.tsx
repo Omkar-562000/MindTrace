@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 import {
   ChatMode,
@@ -6,24 +6,35 @@ import {
   JournalEntry,
   MoodEmoji,
   PressureLevel,
+  StudyTopic,
   SleepTiming,
   chatStarters,
   journalEntriesSeed,
+  moodHistorySeed,
   onboardingQuestions,
 } from '@/constants/DummyData';
 import {
   CheckInPayload,
-  buildMoodHistory,
-  calculateStressScore,
   getAffectiveState,
   getNotificationMessage,
   getReadinessScore,
   getRecommendedIntensity,
   getRescuePlan,
   getStressStatus,
-  getStudyPlan,
   getVelocityState,
 } from '@/services/mindtrace-engine';
+import {
+  AnalyzeResponse,
+  ApiError,
+  CheckinResponse,
+  analyze,
+  createCheckin,
+  getCheckinHistory,
+  getMe,
+  getStudyPlan as getBackendStudyPlan,
+  login,
+  register,
+} from '@/services/mindtrace-api';
 
 type ChatMessage = {
   id: string;
@@ -36,6 +47,17 @@ type AuthUser = {
   email: string;
 };
 
+type ProfileField =
+  | 'fullName'
+  | 'institution'
+  | 'program'
+  | 'semester'
+  | 'examWindow'
+  | 'sleepGoal'
+  | 'studyPreference'
+  | 'stressTrigger'
+  | 'supportStyle';
+
 type MindTraceContextValue = {
   moodScore: number;
   emoji: MoodEmoji;
@@ -47,7 +69,7 @@ type MindTraceContextValue = {
   velocity: 'recovering' | 'stable' | 'declining' | 'critical';
   affectiveState: 'curiosity' | 'confusion' | 'frustration' | 'boredom';
   moodHistory: { day: string; score: number }[];
-  studyPlan: ReturnType<typeof getStudyPlan>;
+  studyPlan: StudyTopic[];
   notification: string;
   readinessScore: number;
   recommendedIntensity: string;
@@ -56,7 +78,7 @@ type MindTraceContextValue = {
   completedRescueStepIds: string[];
   completionRate: number;
   completedTopicIds: string[];
-  nextStudyTopic: ReturnType<typeof getStudyPlan>[number] | null;
+  nextStudyTopic: StudyTopic | null;
   studentProfile: {
     name: string;
     cohort: string;
@@ -80,28 +102,19 @@ type MindTraceContextValue = {
   lastChatRating: number | null;
   journalEntries: JournalEntry[];
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
+  isSubmittingCheckIn: boolean;
   onboardingCompleted: boolean;
   authUser: AuthUser | null;
+  syncError: string | null;
   updateDraft: (input: Partial<CheckInPayload>) => void;
-  submitCheckIn: () => void;
+  submitCheckIn: () => Promise<boolean>;
   setChatMode: (mode: ChatMode) => void;
   sendChatMessage: (message: string) => void;
   rateChat: (rating: number) => void;
   toggleTopicCompletion: (topicId: string) => void;
   toggleRescueStepCompletion: (stepId: string) => void;
-  updateProfile: (
-    field:
-      | 'fullName'
-      | 'institution'
-      | 'program'
-      | 'semester'
-      | 'examWindow'
-      | 'sleepGoal'
-      | 'studyPreference'
-      | 'stressTrigger'
-      | 'supportStyle',
-    value: string
-  ) => void;
+  updateProfile: (field: ProfileField, value: string) => void;
   playComfortRecording: (recordingId: string) => void;
   addJournalEntry: (entry: { title: string; body: string; mood: JournalEntry['mood']; tags: string[] }) => void;
   updateJournalEntry: (
@@ -112,8 +125,8 @@ type MindTraceContextValue = {
   toggleJournalPin: (entryId: string) => void;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
-  signIn: (email: string, password: string) => boolean;
-  signUp: (fullName: string, email: string, password: string) => boolean;
+  signIn: (email: string, password: string) => Promise<boolean>;
+  signUp: (fullName: string, email: string, password: string) => Promise<boolean>;
   signOut: () => void;
 };
 
@@ -125,13 +138,178 @@ const initialPayload: CheckInPayload = {
   brainDump: '',
 };
 
-const createDerivedState = (payload: CheckInPayload) => {
-  const stressScore = calculateStressScore(payload);
-  const moodHistory = buildMoodHistory(payload.moodScore);
+const createWelcomeMessages = (mode: ChatMode): ChatMessage[] =>
+  chatStarters[mode].map((text, index) => ({
+    id: `${mode}-${index}`,
+    role: 'bot',
+    text,
+  }));
+
+const moodToTags = (payload: CheckInPayload) => {
+  const tags = new Set<string>();
+  const note = payload.brainDump.toLowerCase();
+
+  if (
+    payload.emoji === 'tense' ||
+    payload.emoji === 'drained' ||
+    payload.examPressure === 'high' ||
+    payload.moodScore <= 4 ||
+    ['panic', 'overwhelmed', 'burnout', 'stress', 'stressed', 'anxious'].some((word) => note.includes(word))
+  ) {
+    tags.add('stressed');
+  }
+
+  if (
+    payload.moodScore <= 3 ||
+    ['sad', 'down', 'lonely', 'empty', 'hopeless'].some((word) => note.includes(word))
+  ) {
+    tags.add('sad');
+  }
+
+  return Array.from(tags);
+};
+
+const sleepTimingToHours = (sleepTiming: SleepTiming) => {
+  switch (sleepTiming) {
+    case 'late':
+      return 5;
+    case 'steady':
+      return 8;
+    default:
+      return 7;
+  }
+};
+
+const hoursToSleepTiming = (sleep: number): SleepTiming => {
+  if (sleep < 6) {
+    return 'late';
+  }
+
+  if (sleep >= 8) {
+    return 'steady';
+  }
+
+  return 'uneven';
+};
+
+const serializeMoodPayload = (payload: CheckInPayload) =>
+  JSON.stringify({
+    emoji: payload.emoji,
+    score: payload.moodScore,
+    pressure: payload.examPressure,
+    note: payload.brainDump.trim(),
+    tags: moodToTags(payload),
+  });
+
+const parseMoodPayload = (mood: string, sleep: number): CheckInPayload => {
+  try {
+    const parsed = JSON.parse(mood) as {
+      emoji?: MoodEmoji;
+      note?: string;
+      pressure?: PressureLevel;
+      score?: number;
+    };
+
+    return {
+      moodScore: parsed.score && parsed.score >= 1 && parsed.score <= 10 ? parsed.score : initialPayload.moodScore,
+      emoji: parsed.emoji || initialPayload.emoji,
+      sleepTiming: hoursToSleepTiming(sleep),
+      examPressure: parsed.pressure || initialPayload.examPressure,
+      brainDump: parsed.note || '',
+    };
+  } catch {
+    return {
+      ...initialPayload,
+      sleepTiming: hoursToSleepTiming(sleep),
+      brainDump: mood,
+    };
+  }
+};
+
+const formatHistory = (checkins: CheckinResponse[]) => {
+  if (!checkins.length) {
+    return moodHistorySeed;
+  }
+
+  const recent = [...checkins].slice(0, 7).reverse();
+  const derivedHistory = recent.map((entry) => {
+    const parsed = parseMoodPayload(entry.mood, entry.sleep);
+
+    return {
+      day: new Date(entry.timestamp).toLocaleDateString('en-US', { weekday: 'short' }),
+      score: parsed.moodScore,
+    };
+  });
+
+  if (derivedHistory.length >= 7) {
+    return derivedHistory;
+  }
+
+  return [...moodHistorySeed.slice(0, 7 - derivedHistory.length), ...derivedHistory];
+};
+
+const mapBackendStudyPlan = (
+  response: { plan: string[]; state: 'stable' | 'declining' | 'critical' } | null
+): StudyTopic[] => {
+  if (!response) {
+    return [
+      {
+        id: 'placeholder-1',
+        title: 'Take your first check-in',
+        subject: 'Pulse',
+        difficulty: 'easy',
+        duration: '2 min',
+        reason: 'Your first backend study plan appears after you save a pulse check-in.',
+        action: 'Open Pulse, submit a check-in, and MindTrace will refresh your study path.',
+      },
+    ];
+  }
+
+  const difficultyByState = {
+    stable: 'medium',
+    declining: 'easy',
+    critical: 'easy',
+  } as const;
+
+  const subjectByState = {
+    stable: 'Focused Study',
+    declining: 'Gentle Recovery',
+    critical: 'Recovery First',
+  } as const;
+
+  const durationByState = {
+    stable: ['45 min', '35 min', '20 min'],
+    declining: ['25 min', '10 min', '20 min'],
+    critical: ['10 min', '20 min', '15 min'],
+  } as const;
+
+  return response.plan.map((step, index) => ({
+    id: `plan-${response.state}-${index + 1}`,
+    title: `Step ${index + 1}`,
+    subject: subjectByState[response.state],
+    difficulty: difficultyByState[response.state],
+    duration: durationByState[response.state][index] || '15 min',
+    reason: step,
+    action: step,
+  }));
+};
+
+const createDerivedState = ({
+  analysis,
+  checkins,
+  payload,
+  studyPlan,
+}: {
+  analysis: AnalyzeResponse | null;
+  checkins: CheckinResponse[];
+  payload: CheckInPayload;
+  studyPlan: StudyTopic[];
+}) => {
+  const stressScore = analysis?.stressScore ?? 50;
+  const moodHistory = formatHistory(checkins.length ? checkins : [{ id: 0, mood: serializeMoodPayload(payload), sleep: sleepTimingToHours(payload.sleepTiming), timestamp: new Date().toISOString() }]);
   const velocity = getVelocityState(moodHistory, stressScore);
   const affectiveState = getAffectiveState(payload);
-  const studyPlan = getStudyPlan(affectiveState);
-  const notification = getNotificationMessage(stressScore, velocity);
+  const notification = analysis?.recommendation ?? getNotificationMessage(stressScore, velocity);
   const readinessScore = getReadinessScore(stressScore, affectiveState);
   const recommendedIntensity = getRecommendedIntensity(readinessScore);
   const rescuePlan = getRescuePlan(affectiveState, stressScore, recommendedIntensity);
@@ -150,23 +328,23 @@ const createDerivedState = (payload: CheckInPayload) => {
   };
 };
 
-const createWelcomeMessages = (mode: ChatMode): ChatMessage[] =>
-  chatStarters[mode].map((text, index) => ({
-    id: `${mode}-${index}`,
-    role: 'bot',
-    text,
-  }));
-
 const MindTraceContext = createContext<MindTraceContextValue | null>(null);
 
 export function MindTraceProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<CheckInPayload>(initialPayload);
   const [committed, setCommitted] = useState<CheckInPayload>(initialPayload);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [chatMode, setChatModeState] = useState<ChatMode>('listener');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(createWelcomeMessages('listener'));
   const [lastChatRating, setLastChatRating] = useState<number | null>(4);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [serverAnalysis, setServerAnalysis] = useState<AnalyzeResponse | null>(null);
+  const [serverCheckins, setServerCheckins] = useState<CheckinResponse[]>([]);
+  const [serverStudyPlan, setServerStudyPlan] = useState<StudyTopic[]>(mapBackendStudyPlan(null));
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(journalEntriesSeed);
   const [completedTopicIds, setCompletedTopicIds] = useState<string[]>([]);
   const [completedRescueStepIds, setCompletedRescueStepIds] = useState<string[]>([]);
@@ -187,7 +365,16 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
     supportStyle: 'Gentle listening with clear next steps',
   });
 
-  const derived = useMemo(() => createDerivedState(committed), [committed]);
+  const derived = useMemo(
+    () =>
+      createDerivedState({
+        analysis: serverAnalysis,
+        checkins: serverCheckins,
+        payload: committed,
+        studyPlan: serverStudyPlan,
+      }),
+    [committed, serverAnalysis, serverCheckins, serverStudyPlan]
+  );
   const completionRate = useMemo(() => {
     if (!derived.studyPlan.length) {
       return 0;
@@ -211,49 +398,174 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
     setDraft((current) => ({ ...current, ...input }));
   };
 
-  const signIn = (email: string, password: string) => {
+  const hydrateFromBackend = async (token: string) => {
+    const historyResponse = await getCheckinHistory(token);
+    const latestCheckin = historyResponse.checkins[0];
+
+    setServerCheckins(historyResponse.checkins);
+
+    if (!latestCheckin) {
+      setCommitted(initialPayload);
+      setDraft(initialPayload);
+      setServerAnalysis(null);
+      setServerStudyPlan(mapBackendStudyPlan(null));
+      return;
+    }
+
+    const restoredPayload = parseMoodPayload(latestCheckin.mood, latestCheckin.sleep);
+    const [analysisResponse, studyPlanResponse] = await Promise.all([
+      analyze({
+        mood: latestCheckin.mood,
+        sleep: latestCheckin.sleep,
+      }),
+      getBackendStudyPlan(token).catch((error: unknown) => {
+        if (error instanceof ApiError && error.status === 404) {
+          return null;
+        }
+
+        throw error;
+      }),
+    ]);
+
+    setCommitted(restoredPayload);
+    setDraft(restoredPayload);
+    setServerAnalysis(analysisResponse);
+    setServerStudyPlan(mapBackendStudyPlan(studyPlanResponse));
+  };
+
+  useEffect(() => {
+    if (!authToken) {
+      return;
+    }
+
+    hydrateFromBackend(authToken).catch((error: unknown) => {
+      setSyncError(error instanceof Error ? error.message : 'Failed to sync with backend');
+    });
+  }, [authToken]);
+
+  const signIn = async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail || !password.trim()) {
+      setSyncError('Enter a valid email and password.');
       return false;
     }
 
-    setAuthUser({
-      fullName: studentProfile.fullName || studentProfile.name,
-      email: normalizedEmail,
-    });
-    return true;
+    setIsAuthLoading(true);
+    setSyncError(null);
+
+    try {
+      const authResponse = await login({ email: normalizedEmail, password });
+      const meResponse = await getMe(authResponse.token);
+
+      setAuthToken(authResponse.token);
+      setAuthUser({
+        fullName: meResponse.user.name,
+        email: meResponse.user.email,
+      });
+      setStudentProfile((current) => ({
+        ...current,
+        fullName: meResponse.user.name,
+        name: meResponse.user.name,
+      }));
+      setOnboardingCompleted(true);
+      return true;
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : 'Unable to sign in');
+      return false;
+    } finally {
+      setIsAuthLoading(false);
+    }
   };
 
-  const signUp = (fullName: string, email: string, password: string) => {
+  const signUp = async (fullName: string, email: string, password: string) => {
     const normalizedName = fullName.trim();
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedName || !normalizedEmail || password.trim().length < 6) {
+      setSyncError('Use a full name, valid email, and a password with at least 6 characters.');
       return false;
     }
 
-    setAuthUser({
-      fullName: normalizedName,
-      email: normalizedEmail,
-    });
-    setStudentProfile((current) => ({
-      ...current,
-      fullName: normalizedName,
-      name: normalizedName,
-    }));
-    setOnboardingCompleted(false);
-    return true;
+    setIsAuthLoading(true);
+    setSyncError(null);
+
+    try {
+      const authResponse = await register({
+        name: normalizedName,
+        email: normalizedEmail,
+        password,
+      });
+      const meResponse = await getMe(authResponse.token);
+
+      setAuthToken(authResponse.token);
+      setAuthUser({
+        fullName: meResponse.user.name,
+        email: meResponse.user.email,
+      });
+      setStudentProfile((current) => ({
+        ...current,
+        fullName: meResponse.user.name,
+        name: meResponse.user.name,
+      }));
+      setOnboardingCompleted(false);
+      return true;
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : 'Unable to create account');
+      return false;
+    } finally {
+      setIsAuthLoading(false);
+    }
   };
 
   const signOut = () => {
+    setAuthToken(null);
     setAuthUser(null);
-  };
-
-  const submitCheckIn = () => {
-    setCommitted(draft);
+    setSyncError(null);
+    setServerAnalysis(null);
+    setServerCheckins([]);
+    setServerStudyPlan(mapBackendStudyPlan(null));
+    setCommitted(initialPayload);
+    setDraft(initialPayload);
+    setOnboardingCompleted(false);
     setCompletedTopicIds([]);
     setCompletedRescueStepIds([]);
+  };
+
+  const submitCheckIn = async () => {
+    if (!authToken) {
+      setSyncError('Sign in before saving a pulse check-in.');
+      return false;
+    }
+
+    setIsSubmittingCheckIn(true);
+    setSyncError(null);
+
+    const mood = serializeMoodPayload(draft);
+    const sleep = sleepTimingToHours(draft.sleepTiming);
+
+    try {
+      await createCheckin(authToken, { mood, sleep });
+
+      const [historyResponse, analysisResponse, studyPlanResponse] = await Promise.all([
+        getCheckinHistory(authToken),
+        analyze({ mood, sleep }),
+        getBackendStudyPlan(authToken),
+      ]);
+
+      setCommitted(draft);
+      setServerCheckins(historyResponse.checkins);
+      setServerAnalysis(analysisResponse);
+      setServerStudyPlan(mapBackendStudyPlan(studyPlanResponse));
+      setCompletedTopicIds([]);
+      setCompletedRescueStepIds([]);
+      return true;
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : 'Unable to save pulse');
+      return false;
+    } finally {
+      setIsSubmittingCheckIn(false);
+    }
   };
 
   const setChatMode = (mode: ChatMode) => {
@@ -299,8 +611,11 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
       lastChatRating,
       journalEntries,
       isAuthenticated: Boolean(authUser),
+      isAuthLoading,
+      isSubmittingCheckIn,
       onboardingCompleted,
       authUser,
+      syncError,
       updateDraft,
       submitCheckIn,
       setChatMode,
@@ -365,11 +680,14 @@ export function MindTraceProvider({ children }: { children: ReactNode }) {
       completionRate,
       derived,
       draft,
+      isAuthLoading,
+      isSubmittingCheckIn,
       journalEntries,
       lastChatRating,
       nextStudyTopic,
       onboardingCompleted,
       rescueCompletionRate,
+      syncError,
       studentProfile,
     ]
   );

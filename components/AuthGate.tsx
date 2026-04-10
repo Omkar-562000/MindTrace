@@ -8,7 +8,7 @@ import { gradients, palette, radii, shadows, spacing } from '@/constants/theme';
 import { useMindTrace } from '@/hooks/useMindTrace';
 
 export function AuthGate() {
-  const { signIn, signUp, studentProfile } = useMindTrace();
+  const { isAuthLoading, signIn, signUp, studentProfile, syncError } = useMindTrace();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [fullName, setFullName] = useState(studentProfile.fullName);
   const [email, setEmail] = useState('riya@mindtrace.app');
@@ -32,16 +32,14 @@ export function AuthGate() {
     return email.trim().length > 3 && password.trim().length > 0;
   }, [email, fullName, mode, password]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const success =
-      mode === 'signin' ? signIn(email, password) : signUp(fullName, email, password);
+      mode === 'signin' ? await signIn(email, password) : await signUp(fullName, email, password);
 
     if (!success) {
-      setError(
-        mode === 'signin'
-          ? 'Enter a valid email and password.'
-          : 'Use a full name, valid email, and a password with at least 6 characters.'
-      );
+      setError(syncError || (mode === 'signin'
+        ? 'Enter a valid email and password.'
+        : 'Use a full name, valid email, and a password with at least 6 characters.'));
       return;
     }
 
@@ -128,7 +126,7 @@ export function AuthGate() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {info ? <Text style={styles.info}>{info}</Text> : null}
 
-          <Button disabled={!canSubmit} mode="contained" onPress={handleSubmit} style={styles.button}>
+          <Button disabled={!canSubmit || isAuthLoading} loading={isAuthLoading} mode="contained" onPress={handleSubmit} style={styles.button}>
             {mode === 'signin' ? 'Enter MindTrace' : 'Create account'}
           </Button>
 

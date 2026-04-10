@@ -10,8 +10,18 @@ import { palette, radii, shadows, spacing } from '@/constants/theme';
 import { useMindTrace } from '@/hooks/useMindTrace';
 
 export default function ProfileScreen() {
-  const { authUser, isAuthenticated, onboardingQuestions, signIn, signOut, signUp, studentProfile, updateProfile } =
-    useMindTrace();
+  const {
+    authUser,
+    isAuthenticated,
+    isAuthLoading,
+    onboardingQuestions,
+    signIn,
+    signOut,
+    signUp,
+    studentProfile,
+    syncError,
+    updateProfile,
+  } = useMindTrace();
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [fullName, setFullName] = useState(studentProfile.fullName);
   const [email, setEmail] = useState('riya@mindtrace.app');
@@ -35,18 +45,19 @@ export default function ProfileScreen() {
     return email.trim().length > 3 && password.trim().length > 0;
   }, [authMode, email, fullName, password]);
 
-  const handleAuth = () => {
+  const handleAuth = async () => {
     const success =
-      authMode === 'signin' ? signIn(email, password) : signUp(fullName, email, password);
+      authMode === 'signin' ? await signIn(email, password) : await signUp(fullName, email, password);
 
     setSnackbarMessage(
       success
         ? authMode === 'signin'
           ? 'You are signed in.'
           : 'Account created. Your space is ready.'
-        : authMode === 'signin'
-          ? 'Enter a valid email and password.'
-          : 'Use a name, valid email, and a password with at least 6 characters.'
+        : syncError ||
+            (authMode === 'signin'
+              ? 'Enter a valid email and password.'
+              : 'Use a name, valid email, and a password with at least 6 characters.')
     );
   };
 
@@ -131,7 +142,13 @@ export default function ProfileScreen() {
             value={password}
           />
 
-          <Button disabled={!canSubmitAuth} mode="contained" onPress={handleAuth} style={styles.button}>
+          <Button
+            disabled={!canSubmitAuth || isAuthLoading}
+            loading={isAuthLoading}
+            mode="contained"
+            onPress={handleAuth}
+            style={styles.button}
+          >
             {authTitle}
           </Button>
         </Surface>

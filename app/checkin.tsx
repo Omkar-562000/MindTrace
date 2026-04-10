@@ -20,19 +20,21 @@ export default function PulseScreen() {
     brainDump,
     emoji,
     examPressure,
+    isSubmittingCheckIn,
     moodScore,
     readinessScore,
     sleepTiming,
     stressScore,
     submitCheckIn,
+    syncError,
     updateDraft,
     velocity,
   } = useMindTrace();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
 
-  const handleSubmit = () => {
-    submitCheckIn();
-    setSnackbarVisible(true);
+  const handleSubmit = async () => {
+    const success = await submitCheckIn();
+    setSnackbarVisible(success);
   };
 
   return (
@@ -149,11 +151,13 @@ export default function PulseScreen() {
               <StatusPill label={affectiveState} tone="blue" />
             </View>
           </View>
-          <Button mode="contained" onPress={handleSubmit}>
+          <Button loading={isSubmittingCheckIn} mode="contained" onPress={handleSubmit}>
             Save pulse
           </Button>
         </View>
       </Surface>
+
+      {syncError ? <Text style={styles.errorText}>{syncError}</Text> : null}
 
       <Snackbar onDismiss={() => setSnackbarVisible(false)} visible={snackbarVisible}>
         Pulse saved. Beacon and Path are up to date.
@@ -288,6 +292,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: spacing.lg,
+  },
+  errorText: {
+    color: palette.danger,
+    marginTop: spacing.md,
   },
   summaryLabel: {
     color: palette.slate,

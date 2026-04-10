@@ -1,0 +1,34 @@
+Starting project at C:\Users\asmit\OneDrive\Desktop\MindTrace
+React Compiler enabled
+Metro is running in CI mode, reloads are disabled. Remove CI=true to enable watch mode.
+Starting Metro Bundler
+Waiting on http://localhost:8082
+Logs for your project will appear below.
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ node_modules\expo-router\node\render.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web node_modules\expo-router\entry.js ▓▓░░░░░░░░░░░░░░ 15.6% (18/50)
+λ node_modules\expo-router\node\render.js ░░░░░░░░░░░░░░░░  4.0% ( 15/130)
+Web node_modules\expo-router\entry.js ▓▓░░░░░░░░░░░░░░ 15.6% (102/270)
+λ node_modules\expo-router\node\render.js ▓▓▓░░░░░░░░░░░░░ 21.2% (175/380)
+Web node_modules\expo-router\entry.js ▓▓░░░░░░░░░░░░░░ 15.6% (102/270)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓░░░░░░░░░░ 40.2% (320/505)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓░░░░░░░░░░ 38.7% (270/434)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓▓▓░░░░░░░░ 54.0% (385/524)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 44.0% (331/499)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 62.4% (503/641)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 50.0% (434/614)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 69.5% (572/696)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓░░░░░░░░ 51.7% (443/616)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 69.5% (640/806)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 62.8% (616/798)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 83.6% (799/874)
+λ Bundled 32601ms node_modules\expo-router\node\render.js (990 modules)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1049/1049)
+Web Bundled 38439ms node_modules\expo-router\entry.js (1049 modules)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1049/1049)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓░░░░░░░░ 56.1% (552/737)
+Web Bundled 6411ms node_modules\expo-router\entry.js (1049 modules)
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 141ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 1560ms node_modules\expo-router\entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
